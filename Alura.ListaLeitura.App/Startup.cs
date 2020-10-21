@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -29,11 +30,47 @@ namespace Alura.ListaLeitura.App
             builder.MapRoute("Livros/Lidos", LivrosLidos);
             builder.MapRoute("Cadastro/NovoLivro/{nome}/{autor}", NovoLivroParaLer); // Rota com templete
             builder.MapRoute("Livros/Detalhes/{id:int}", ExibeDetalhes); // Rota com templete e restrição de tipo
+            builder.MapRoute("Cadastro/NovoLivro", ExibeFormulario);
+            builder.MapRoute("Cadastro/Incluir", ProcessaFormulario);
             var rotas = builder.Build(); // Construindo as rotas usando o método "Build"
 
             app.UseRouter(rotas);
 
             //app.Run(Roteamento);
+        }
+
+        private Task ProcessaFormulario(HttpContext context)
+        {
+            var livro = new Livro()
+            {
+                //Capturando os dados pelo endereço
+                //Titulo = context.Request.Query["titulo"].First(),
+                //Autor = context.Request.Query["autor"].First()(),
+
+                //Capturando os dados pelo corpo da requisição
+                Titulo = context.Request.Form["titulo"].First(),
+                Autor = context.Request.Form["autor"].First()
+            };
+            var repo = new LivroRepositorioCSV();
+            repo.Incluir(livro);
+            return context.Response.WriteAsync("O livro foi adicionado com sucesso.");
+        }
+
+        private Task ExibeFormulario(HttpContext context)
+        {
+            var html = CarregaArquivoHTML("formulario");
+
+            return context.Response.WriteAsync(html);
+        }
+
+        private string CarregaArquivoHTML(string nomeArquivo)
+        {
+            var nomeCompletoArquivo = $"C:\\Users\\milar\\Documents\\CSharp\\CSharp-Asp dotNet Core MVC\\Alura.ListaLeitura\\Alura.ListaLeitura.App\\HTML\\{nomeArquivo}.html";
+
+            using (var arquivo = File.OpenText(nomeCompletoArquivo))
+            {
+                return arquivo.ReadToEnd();
+            }
         }
 
         private Task ExibeDetalhes(HttpContext context)
@@ -46,11 +83,11 @@ namespace Alura.ListaLeitura.App
 
         public Task NovoLivroParaLer(HttpContext context)
         {
-            var livro = new Livro() 
-            { 
+            var livro = new Livro()
+            {
                 // Recuperando os valores das rota com templete e convertendo em string
                 Titulo = Convert.ToString(context.GetRouteValue("nome")),
-                Autor = Convert.ToString(context.GetRouteValue("autor").ToString())
+                Autor = Convert.ToString(context.GetRouteValue("autor"))
             };
             var repo = new LivroRepositorioCSV();
             repo.Incluir(livro);
@@ -83,19 +120,30 @@ namespace Alura.ListaLeitura.App
         public Task LivrosParaLer(HttpContext context)
         {
             var _repo = new LivroRepositorioCSV();
-            /* Quando a requisição chegar vamos responder escrevendo na tela */
-            return context.Response.WriteAsync(_repo.ParaLer.ToString());
+            var conteudoArquivo = CarregaArquivoHTML("para-ler");
 
-        }public Task LivrosLendo(HttpContext context)
+            foreach (var livro in _repo.ParaLer.Livros)
+            {
+                conteudoArquivo = conteudoArquivo
+                    .Replace("#NOVO-ITEM#", $"<li>{livro.Titulo} - {livro.Autor}</li>#NOVO-ITEM#");
+            }
+            conteudoArquivo = conteudoArquivo.Replace("#NOVO-ITEM#", "");
+            
+            /* Quando a requisição chegar vamos responder escrevendo na tela */
+            return context.Response.WriteAsync(conteudoArquivo);
+
+        }
+        public Task LivrosLendo(HttpContext context)
         {
             var _repo = new LivroRepositorioCSV();
-            
+
             return context.Response.WriteAsync(_repo.Lendo.ToString());
 
-        }public Task LivrosLidos(HttpContext context)
+        }
+        public Task LivrosLidos(HttpContext context)
         {
             var _repo = new LivroRepositorioCSV();
-            
+
             return context.Response.WriteAsync(_repo.Lidos.ToString());
         }
     }
