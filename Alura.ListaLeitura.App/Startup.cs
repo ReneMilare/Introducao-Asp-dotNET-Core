@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Alura.ListaLeitura.App
@@ -26,7 +27,8 @@ namespace Alura.ListaLeitura.App
             builder.MapRoute("Livros/ParaLer", LivrosParaLer);
             builder.MapRoute("Livros/Lendo", LivrosLendo);
             builder.MapRoute("Livros/Lidos", LivrosLidos);
-            builder.MapRoute("Cadastro/NovoLivro/{nome}/{autor}", NovoLivroParaLer);
+            builder.MapRoute("Cadastro/NovoLivro/{nome}/{autor}", NovoLivroParaLer); // Rota com templete
+            builder.MapRoute("Livros/Detalhes/{id:int}", ExibeDetalhes); // Rota com templete e restrição de tipo
             var rotas = builder.Build(); // Construindo as rotas usando o método "Build"
 
             app.UseRouter(rotas);
@@ -34,10 +36,19 @@ namespace Alura.ListaLeitura.App
             //app.Run(Roteamento);
         }
 
+        private Task ExibeDetalhes(HttpContext context)
+        {
+            int id = Convert.ToInt32(context.GetRouteValue("id"));
+            var repo = new LivroRepositorioCSV();
+            var livro = repo.Todos.First(l => l.Id == id);
+            return context.Response.WriteAsync(livro.Detalhes());
+        }
+
         public Task NovoLivroParaLer(HttpContext context)
         {
             var livro = new Livro() 
             { 
+                // Recuperando os valores das rota com templete e convertendo em string
                 Titulo = Convert.ToString(context.GetRouteValue("nome")),
                 Autor = Convert.ToString(context.GetRouteValue("autor").ToString())
             };
